@@ -31,7 +31,7 @@ gumb.scale <- inla.tmarginal(function(x) 1/x, m1.weib$marginals.hyperpar[[1]])
 rbind("Gumbel scale"=inla.zmarginal(gumb.scale), t(m1.gumb))
 
 # Posterior marginal distribution plots
-par(mfrow=c(2,4))
+par(mfrow=c(2,4), mar = c(3,3,3,1))
 m1.marg <- append(list("Gumbel scale" = gumb.scale),
                   lapply(m1.weib$marginals.fixed, function(m) inla.tmarginal(function(x) -x, m)))
 sapply(1:7, function (x) plot(m1.marg[[x]], type = "l", xlab = "", ylab = "",
@@ -53,13 +53,23 @@ m2.pwc <- joint(formSurv = inla.surv(time = time, event = delta) ~ stage + age +
 # Posterior summary
 summary(m2.pwc)
 summary(m2.pwc)$BaselineValues
-summary(m2.pwc, hazr=TRUE)
+summary(m2.pwc, hr=TRUE)
+
+###############################################################################################
+#                        2bis - STRATIFIED PROPORTIONAL HAZARDS MODELS                        #
+###############################################################################################
+larynx$stage <- as.integer(larynx$stage)
+m2b.pwc <- joint(formSurv = inla.surv(time = time, event = delta) ~ age + diagyr,
+                 dataSurv = larynx, control=list(strata=list("stage")))
+
+# Posterior summary
+plot(m2b.pwc)
+# makes sense to have higher baseline risk for each stage of cancer as it indicates how bad the disease is.
 
 ###############################################################################################
 #                                   3 - MIXTURE CURE MODELS                                   #
 ###############################################################################################
 data(bmt)
-
 # Fit the model
 m3.cure <- joint(formSurv = inla.surv(time = Time, event = Status,
                                       cure = cbind("Int"=1, "TRT"=TRT)) ~ TRT,
@@ -74,7 +84,7 @@ quantile(inv.logit(smp.cure[,1]), c(0.025, 0.5, 0.975)) # cure fraction allogeni
 quantile(inv.logit(rowSums(smp.cure)), c(0.025, 0.5, 0.975)) # cure fraction autologous
 
 # HR of treatment for non-cured
-summary(m3.cure, hazr=T)$SurvEff[[1]]["TRT_S1",]
+summary(m3.cure, hr=T)$SurvEff[[1]]["TRT_S1",]
 
 ###############################################################################################
 #                                 4 - COMPETING RISKS MODELS                                  #
@@ -92,7 +102,7 @@ m4.cr <- joint(formSurv = list(inla.surv(time = time, event = delta[,1]) ~ allo 
 
 # Posterior summary
 summary(m4.cr)
-summary(m4.cr, hazr=T)$SurvEff[[1]]["allo_S1",]
+summary(m4.cr, hr=T)$SurvEff[[1]]["allo_S1",]
 
 # Cumulative Incidence Functions
 riskW <- function(t, lambda, alpha) lambda*alpha*t^(alpha-1)
@@ -184,8 +194,7 @@ m6.frlt <- joint(formSurv = inla.surv(time = time, event = status) ~ sex + (1 | 
 
 # Posterior summary
 summary(m6.frlt)
-
-summary(m6.frlt, hazr=T)$SurvEff[[1]]["sex_S1",]
+summary(m6.frlt, hr=T)$SurvEff[[1]]["sex_S1",]
 
 ###############################################################################################
 #                      7 - JOINT MODELS OF LONGITUDINAL AND SURVIVAL DATA                     #
